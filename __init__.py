@@ -1,11 +1,11 @@
 """
 Author: cg8-5712
-Date: 2025-04-20
-Version: 1.0.0
+Date: 2025-05-02
+Version: 1.5.0
 License: GPL-3.0
-LastEditTime: 2025-04-20 16:30:00
-Title: eAIP 航图查询插件
-Description: 该插件允许用户通过机场的 ICAO 代码查询航图信息。
+LastEditTime: 2025-05-02 17:45
+Title: eAIP Chart Query Plugin
+Description: This plugin allows users to query aeronautical charts using airport ICAO codes.
 """
 
 from nonebot import on_command, require
@@ -28,26 +28,26 @@ from zhenxun.utils.message import MessageUtils
 from zhenxun.services.log import logger
 from .eaip import EaipHandler
 
-# 定义支持的航图类型
+# Define supported chart types
 CHART_TYPES = [
     "ADC", "APDC", "GMC", "DGS", "AOC", "PATC", "FDA", "ATCMAS",
     "SID", "STAR", "WAYPOINT LIST", "DATABASE CODING TABLE", "IAC", "ATCSMAC"
 ]
 
 __plugin_meta__ = PluginMetadata(
-    name="eAIP航图查询",
-    description="查询机场航图信息",
+    name="eAIP Chart Query",
+    description="Query airport charts information",
     usage="""
-    指令:
-        @机器人 eaip [机场ICAO代码]: 以图片形式显示航图列表
-        @机器人 eaip [机场ICAO代码] --raw: 以文本形式显示航图列表
-        @机器人 eaip [机场ICAO代码] [航图类型]: 显示指定类型航图列表
-        @机器人 eaip [机场ICAO代码] [跑道号]: 显示相关跑道航图列表
-        @机器人 eaip [机场ICAO代码] -s [文件标号]: 显示指定航图
-        @机器人 eaip [机场ICAO代码] -c [code]: 按code匹配航图
-        @机器人 eaip [机场ICAO代码] -f [关键字]: 搜索文件名包含关键字的航图
-        @机器人 eaip set [期数]: 更新订阅期(仅管理员)
-    支持的航图类型：
+    Commands:
+        @Bot eaip [ICAO code]: Display chart list as image
+        @Bot eaip [ICAO code] --raw: Display chart list as text
+        @Bot eaip [ICAO code] [Chart type]: Display charts of specified type
+        @Bot eaip [ICAO code] [Runway]: Display runway-related charts
+        @Bot eaip [ICAO code] -s [File number]: Display specific chart
+        @Bot eaip [ICAO code] -c [code]: Match charts by code
+        @Bot eaip [ICAO code] -f [keyword]: Search charts by filename keyword
+        @Bot eaip set [Period]: Update AIRAC period (admin only)
+    Supported chart types:
         ADC, APDC, GMC, DGS, AOC, PATC, FDA, ATCMAS, SID, STAR,
         WAYPOINT LIST, DATABASE CODING TABLE, IAC, ATCSMAC
     """,
@@ -58,13 +58,13 @@ __plugin_meta__ = PluginMetadata(
                 module="eaip",
                 key="AIRAC_PERIOD",
                 value=2505,
-                help="订阅期(2505)",
+                help="AIRAC Period (2505)",
                 default_value=2505,),
             RegisterConfig(
                 module="eaip",
                 key="DIR_NAME",
                 value="EAIP2025-05.V1.3",
-                help="文件路径(EAIP2025-05.V1.3)",
+                help="Directory path (EAIP2025-05.V1.3)",
                 default_value="EAIP2025-05.V1.3",)
         ]).to_dict(),
 )
@@ -73,7 +73,7 @@ Config.add_plugin_config(
     "eaip",
     "AIRAC_PERIOD",
     2505,
-    help="订阅期(2505)",
+    help="AIRAC Period (2505)",
     type=int
 )
 
@@ -81,7 +81,7 @@ Config.add_plugin_config(
     "eaip",
     "DIR_NAME",
     "EAIP2025-05.V1.3",
-    help="文件路径(EAIP2025-05.V1.3)",
+    help="Directory path (EAIP2025-05.V1.3)",
     type=str
 )
 
@@ -90,23 +90,23 @@ eaip_command = on_command("eaip", rule=to_me(), priority=3, block=True)
 
 @eaip_command.handle()
 async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
-    """处理 eAIP 命令"""
+    """Handle eAIP command"""
     args = shlex.split(args.extract_plain_text().strip())
 
     if not args:
         await MessageUtils.build_message([
             At(flag="user", target=str(event.user_id)),
-            Text("请提供机场 ICAO 代码")
+            Text("Please provide an airport ICAO code")
         ]).send(reply_to=True)
         return
 
     try:
-        # 处理设置命令
+        # Handle set command
         if args[0] == "set" and len(args) == 2:
             if not await SUPERUSER(bot, event):
                 await MessageUtils.build_message([
                     At(flag="user", target=str(event.user_id)),
-                    Text("只有管理员可以使用此命令")
+                    Text("Only administrators can use this command")
                 ]).send(reply_to=True)
                 return
             result = await eaip_handler.update_period(args[1])
@@ -116,7 +116,7 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
             ]).send(reply_to=True)
             return
 
-        # 处理航图查询
+        # Handle chart queries
         icao = args[0].upper()
         search_type = None
         filename = None
@@ -128,7 +128,7 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
                 if len(args) <= 2:
                     await MessageUtils.build_message([
                         At(flag="user", target=str(event.user_id)),
-                        Text("请提供文件标号")
+                        Text("Please provide a file number")
                     ]).send(reply_to=True)
                     return
                 doc_id = args[2]
@@ -142,7 +142,7 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
                 if len(args) <= 2:
                     await MessageUtils.build_message([
                         At(flag="user", target=str(event.user_id)),
-                        Text("请提供 code")
+                        Text("Please provide a code")
                     ]).send(reply_to=True)
                     return
                 code = args[2].upper()
@@ -156,30 +156,30 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
                 if len(args) <= 2:
                     await MessageUtils.build_message([
                         At(flag="user", target=str(event.user_id)),
-                        Text("请提供搜索关键字")
+                        Text("Please provide a search keyword")
                     ]).send(reply_to=True)
                     return
                 filename = args[2]
             else:
                 search_type = args[1].upper()
 
-        # 获取航图列表
+        # Get chart list
         result = await eaip_handler.get_chart_list(icao, search_type, filename=filename)
         if result is None:
             await MessageUtils.build_message([
                 At(flag="user", target=str(event.user_id)),
-                Text("未找到相关航图")
+                Text("No charts found")
             ]).send(reply_to=True)
             return
 
         if show_raw:
-            # 文字形式返回
+            # Return as text
             await MessageUtils.build_message([
                 At(flag="user", target=str(event.user_id)),
-                Text(result + "\n请在60秒内回复序号选择航图：")
+                Text(result + "\nPlease reply with a number to select a chart within 60 seconds:")
             ]).send(reply_to=True)
         else:
-            # 生成HTML图片
+            # Generate HTML image
             charts = []
             for line in result.split('\n'):
                 if not line.strip():
@@ -218,14 +218,14 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
                 image
             ]).send(reply_to=True)
 
-        # 等待用户选择
+        # Wait for user selection
         try:
             resp = await prompt_until(
-                "请在60秒内回复序号选择航图：",
+                "Please enter a number to select a chart within 60 seconds:",
                 lambda e: e.extract_plain_text().strip().isdigit(),
                 timeout=60,
                 retry=1,
-                retry_prompt="输入错误，请重新输入有效的序号"
+                retry_prompt="Invalid input, please enter a valid number"
             )
 
             if resp:
@@ -233,19 +233,19 @@ async def handle_eaip(bot: Bot, event: GroupMessageEvent, args=CommandArg()):
                 chart = await eaip_handler.get_chart_by_selection(icao, selection)
                 await MessageUtils.build_message([
                     At(flag="user", target=str(event.user_id)),
-                    chart if chart else Text("未找到对应的航图")
+                    chart if chart else Text("Chart not found")
                 ]).send(reply_to=True)
 
         except Exception as e:
             await MessageUtils.build_message([
                 At(flag="user", target=str(event.user_id)),
-                Text("操作超时或选择无效，请重新查询")
+                Text("Operation timed out or invalid selection, please query again")
             ]).send(reply_to=True)
-            logger.error("选择航图失败", "eaip", e=e)
+            logger.error("Failed to select chart", "eaip", e=e)
 
     except Exception as e:
         await MessageUtils.build_message([
             At(flag="user", target=str(event.user_id)),
-            Text(f"处理请求失败: {str(e)}")
+            Text(f"Failed to process request: {str(e)}")
         ]).send(reply_to=True)
-        logger.error("处理eAIP请求失败", "eaip", e=e)
+        logger.error("Failed to process eAIP request", "eaip", e=e)

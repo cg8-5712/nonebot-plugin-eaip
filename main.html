@@ -1,66 +1,143 @@
+.html -->
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ icao }} 航图列表</title>
+    <title>{{ icao }} Chart List</title>
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #ecf0f1;
+            --container-background: #ffffff;
+            --border-color: #bdc3c7;
+            --hover-color: #e9f2f9;
+            --text-color: #2c3e50;
+            --header-color: #34495e;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
             margin: 0;
             padding: 20px;
+            line-height: 1.6;
         }
-        h1 {
-            text-align: center;
-            color: #0056b3;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background-color: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        th, td {
-            border: 1px solid #dddddd;
-            padding: 12px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        tr:hover {
-            background-color: #f1f1f1;
-        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #ffffff;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 30px;
+            background-color: var(--container-background);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--header-color);
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .airport-info {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--secondary-color);
+            font-size: 1.2em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
+            background-color: var(--container-background);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+        }
+
+        tr:hover {
+            background-color: var(--hover-color);
+            transition: background-color 0.3s ease;
+        }
+
+        td {
+            font-size: 0.95em;
+        }
+
+        .chart-id {
+            width: 80px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .chart-type {
+            width: 150px;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .chart-name {
+            color: var(--text-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>{{ icao }} 航图列表</h1>
+        <h1>Aeronautical Charts</h1>
+        <div class="airport-info">
+            {{ icao }} International Airport
+        </div>
         <table>
             <thead>
                 <tr>
-                    <th>序号</th>
-                    <th>类型</th>
-                    <th>航图名称</th>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Chart Name</th>
                 </tr>
             </thead>
             <tbody>
                 {% for chart in charts %}
                 <tr>
-                    <td>{{ chart.id }}</td>
-                    <td>{{ chart.type }}</td>
-                    <td>{{ chart.name }}</td>
+                    <td class="chart-id">{{ chart.id }}</td>
+                    <td class="chart-type">{{ chart.type }}</td>
+                    <td class="chart-name">{{ chart.name }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
