@@ -1,9 +1,9 @@
 """
 Author: cg8-5712
 Date: 2025-05-02
-Version: 1.5.0
+Version: 1.9.0
 License: GPL-3.0
-LastEditTime: 2025-05-02 17:45
+LastEditTime: 2025-07-03 21:40
 Title: AIP Chart Service
 Description: Service class for processing and managing aeronautical charts.
 """
@@ -66,7 +66,7 @@ class ChartProcessor:
             raise ValueError(f"AD.JSON文件不存在: {self.json_path}")
 
     def merge_pdfs(self, folder_path: Path, chart_type: str) -> Optional[Path]:
-        """合并指定类型的PDF文件"""
+        """合并指定类型的PDF文件（仅当有多个文件时）"""
         if not folder_path.exists() or not folder_path.is_dir():
             logger.warning("文件夹不存在", "航图合并", target=str(folder_path))
             return None
@@ -75,6 +75,14 @@ class ChartProcessor:
         if not pdf_files:
             logger.warning("没有找到PDF文件", "航图合并", target=str(folder_path))
             return None
+
+        if len(pdf_files) == 1:
+            logger.info(
+                "仅有一个PDF文件，无需合并",
+                "航图合并",
+                target=str(pdf_files[0])
+            )
+            return None  # 或者 return pdf_files[0] 如果你希望返回单文件路径
 
         try:
             merged_doc = pymupdf.open()
@@ -284,14 +292,3 @@ class ChartProcessor:
 
         except Exception as e:
             logger.error("更新过程出错", "航图处理", e=e)
-
-
-def main() -> None:
-    """主函数"""
-    data_path = Path(PLUGIN_DATA_PATH) / "eaip" / "AD" / "2505"
-    processor = ChartProcessor(data_path)
-    processor.update(["rename", "organize", "index"])
-
-
-if __name__ == "__main__":
-    main()
