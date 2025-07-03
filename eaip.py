@@ -1,9 +1,9 @@
 """
 Author: cg8-5712
 Date: 2025-05-02
-Version: 1.5.0
+Version: 1.8.0
 License: GPL-3.0
-LastEditTime: 2025-05-02 17:45
+LastEditTime: 2025-07-02 21:55
 Title: eAIP Chart Query Plugin
 Description: Core handler for processing eAIP chart data. This module provides functionality
 for managing and retrieving aeronautical charts, including AIRAC cycle updates,
@@ -31,29 +31,58 @@ class EaipHandler:
         # Build base_path using EAIP_DATA_PATH and current cycle
         self.base_path = EAIP_DATA_PATH / str(self.airac)
 
+    async def update_dir_name(self) -> str:
+        """Auto update DIR_NAME based on EAIP folder"""
+        try:
+            target_path = EAIP_DATA_PATH / str(self.airac) / "Data"
+            if not target_path.exists():
+                print(f"Directory {target_path} does not exist")
+                return f"Directory {target_path} does not exist"
+
+            # Find EAIP folder
+            eaip_dirs = [d for d in target_path.iterdir() if d.is_dir() and d.name.startswith("EAIP")]
+            print(f"EAIP folders found: {eaip_dirs}")
+            if not eaip_dirs:
+                print(f"No EAIP folder found in {target_path}")
+                return f"No EAIP folder found in {target_path}"
+
+            # Update DIR_NAME
+            self.dir_name = eaip_dirs[0].name
+            Config.set_config("eaip", "DIR_NAME", self.dir_name, True)
+            logger.info(f"DIR_NAME updated to: {self.dir_name}", "eaip")
+            return f"DIR_NAME update successful: {self.dir_name}"
+
+        except Exception as e:
+            logger.error("Failed to auto update DIR_NAME", "eaip", e=e)
+            return f"DIR_NAME update failed: {e}"
+
     async def update_period(self, period: str) -> str:
-        """Update AIRAC cycle period"""
+        """Update AIRAC cycle period and DIR_NAME"""
         if not period.isdigit() or len(period) != 4:
             return "Invalid period format"
         try:
-            airac = int(period)
-            print(f"Updating subscription period: {airac}")
-            Config.set_config("eaip", "AIRAC_PERIOD", int(airac), True)
-            print("Period update successful")
-            Config.set_config("eaip", "DIR_NAME", "EAIP2025-05.V1.3", True)
-            print("Directory update successful")
-            # Check if new path exists
-            new_path = EAIP_DATA_PATH / str(airac)
-            print(f"New path: {new_path}")
+            self.airac = int(period)
+            Config.set_config("eaip", "AIRAC_PERIOD", self.airac, True)
+            logger.info(f"AIRAC period updated to: {self.airac}", "eaip")
+
+            # Auto update DIR_NAME
+            dir_name_result = await self.update_dir_name()
+            if "failed" in dir_name_result:
+                return dir_name_result
+
+            # Check new path
+            new_path = EAIP_DATA_PATH / str(self.airac)
             if not new_path.exists():
-                return f"Data directory for period {airac} does not exist"
+                return f"Data directory {new_path} does not exist"
 
             self.base_path = new_path
             terminal_path = self.base_path / "Data" / self.dir_name / "Terminal"
             need_update = False
 
-            print(f"Checking if {self.base_path} needs update")
+            if not terminal_path.exists():
+                return f"Terminal directory not found: {terminal_path}"
 
+            # Check if index files need update
             for file in os.listdir(terminal_path):
                 file_path = terminal_path / file
                 if file_path.is_dir():
@@ -83,14 +112,15 @@ class EaipHandler:
                         airport_info.append(f"{airport.name}: {chart_count} charts")
 
             result = (
-                f"AIRAC Period: {airac}\n"
-                f"Total Airports: {len(airports)}\n"
-                f"Total Charts: {total_charts}\n"
-                f"Airport Index:\n" + "\n".join(airport_info)
+                    f"AIRAC Period: {self.airac}\n"
+                    f"Directory: {self.dir_name}\n"
+                    f"Total Airports: {len(airports)}\n"
+                    f"Total Charts: {total_charts}\n"
+                    f"Airport Index:\n" + "\n".join(airport_info)
             )
 
-            logger.success(f"Period update successful: {airac}", "eaip",
-                       param={"airports": len(airports), "charts": total_charts})
+            logger.success(f"Period update successful: {self.airac}", "eaip",
+                           param={"airports": len(airports), "charts": total_charts})
             return result
 
         except Exception as e:
